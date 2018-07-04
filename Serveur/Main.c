@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <string.h>
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -13,33 +14,27 @@ typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
-const int PORT_ECOUTE=999;
-void ReadXBytes(int socket, unsigned int x, void* buffer)
-{
-    int bytesRead = 0;
-    int result;
-    while (bytesRead < x)
-    {
-        result = read(socket, buffer + bytesRead, x - bytesRead);
-        if (result < 1 )
-        {
-            // Throw your error.
-        }
+const int PORT_ECOUTE = 999;
 
-        bytesRead += result;
-    }
+char*  readMessageClient(int socketClient)
+{
+	char* letter=malloc(1);
+	char* buffer=malloc(512);
+	int tailleRecu = 0;
+	printf("reading...\n");
+	while(*letter!="\n"){
+		read(socketClient,letter,1);
+		printf("%s",letter);
+		strcat(buffer,letter);
+  	}
+ 	printf("%s\n",buffer);
+
+	return buffer;
 }
+void communicateWithClient(int socketClient){
+	readMessageClient(socketClient);
+ 
 
-void communicateWithClient(int socketClient)
-{
-	int continuer=1;
-	while(continuer){
-		char* dataRead;
-		printf("le serveur écoute\n");
-		recv(socketClient,dataRead,12,0);
-		printf("data reçues : %s\n",dataRead);
-		continuer=1;
-	}
 }
 void startServeur()
 {
@@ -68,7 +63,7 @@ void startServeur()
 		perror("listen()");
 		exit(-1);
 	}
-	printf("Le serveur écoute sur le port %d \n",PORT_ECOUTE);
+	printf("Le serveur écoute sur le port %d \n", PORT_ECOUTE);
 	SOCKADDR_IN csin = {0};
 	SOCKET csock;
 
@@ -87,7 +82,7 @@ void startServeur()
 		int pid = fork();
 		if (pid == 0)
 		{
-			printf("connexion d'un client avec l'id %d. PID créé : %d\n",csock,pid);
+			printf("connexion d'un client avec l'id %d \n", csock);
 			communicateWithClient(csock);
 			exit(0);
 		}

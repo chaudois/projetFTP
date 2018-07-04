@@ -42,7 +42,16 @@ int main()
         perror("connect()");
         exit(-1);
     }
-    char* message="hello world\n";
+
+    char* message=malloc(12);
+    message="hello world";
     printf("envoie des donné \"%s\" sur l'adresse %s:%d\n",message,TARGET_IP,TARGET_PORT);
-    write(sock,message,12);
+
+    while(message!="stop"){
+ 
+        write(sock,message+'\n',12);
+        message=malloc(20);
+ 
+        scanf("%s",message);
+     }
 }
