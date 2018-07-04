@@ -42,4 +42,7 @@ int main()
         perror("connect()");
         exit(-1);
     }
+    char* message="hello world\n";
+    printf("envoie des donné \"%s\" sur l'adresse %s:%d\n",message,TARGET_IP,TARGET_PORT);
+    write(sock,message,12);
 }
