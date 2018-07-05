@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <string.h>
+#include <signal.h>
+
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -14,38 +16,40 @@ typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
-const int PORT_ECOUTE = 999;
-
-char*  readMessageClient(int socketClient)
+const int PORT_ECOUTE = 998;
+SOCKET sock;
+void sig_handler(int signo)
 {
-	char* letter=malloc(1);
-	char* buffer=malloc(512);
-	int tailleRecu = 0;
-	printf("reading...\n");
-	while(*letter!="\n"){
-		read(socketClient,letter,1);
-		printf("%s",letter);
-		strcat(buffer,letter);
-  	}
- 	printf("%s\n",buffer);
-
-	return buffer;
+	if (signo == SIGINT)
+	{
+		printf("\nIntériuption du serveur par l'utilisateur\n");
+		close(sock);
+	}
+	exit(-1);
 }
-void communicateWithClient(int socketClient){
-	readMessageClient(socketClient);
+
+void readMessageClient(int socketClient)
+{
+	char letter = '0';
+    char buffer[1024];
+	memset(buffer, '0',sizeof(buffer));
+
+	int tailleRecue = 0;
+	while ((tailleRecue = read(socketClient, buffer, sizeof(buffer) - 1) > 0))
+	{
+ 		printf("\n(%d) : [ %s ]\n",socketClient, buffer);
+ 	}
  
-
-}
+ } 
 void startServeur()
 {
-	SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+	sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == INVALID_SOCKET)
 	{
 		perror("socket()");
 		exit(-1);
 	}
-	printf("Serveur créé\n", sock);
-	SOCKADDR_IN sin = {0};
+ 	SOCKADDR_IN sin = {0};
 
 	sin.sin_addr.s_addr = htonl(INADDR_ANY);
 
@@ -58,7 +62,7 @@ void startServeur()
 		perror("bind()");
 		exit(-1);
 	}
-	if (listen(sock, 5) == SOCKET_ERROR)
+	if (listen(sock, 0) == SOCKET_ERROR)
 	{
 		perror("listen()");
 		exit(-1);
@@ -72,19 +76,21 @@ void startServeur()
 	int continuer = 1;
 	while (continuer)
 	{
-		csock = accept(sock, (SOCKADDR *)&csin, &sinsize);
+ 		csock = accept(sock, (SOCKADDR *)&csin, &sinsize);
 
 		if (csock == INVALID_SOCKET)
 		{
 			perror("accept()");
+			exit(0);
 		}
 
 		int pid = fork();
 		if (pid == 0)
 		{
 			printf("connexion d'un client avec l'id %d \n", csock);
-			communicateWithClient(csock);
-			exit(0);
+			readMessageClient(csock);
+			printf("Déconexion du client %d\n",csock);
+			exit(EXIT_SUCCESS);
 		}
 	}
 	closesocket(sock);
@@ -92,6 +98,7 @@ void startServeur()
 }
 int main()
 {
+	signal(SIGINT, sig_handler);
 	startServeur();
 	return 0;
 }

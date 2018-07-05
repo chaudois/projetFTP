@@ -11,7 +11,7 @@
 #define closesocket(s) close(s)
 typedef int SOCKET;
 const char *TARGET_IP = "localhost";
-const int TARGET_PORT = 999;
+const int TARGET_PORT = 998;
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
@@ -43,15 +43,13 @@ int main()
         exit(-1);
     }
 
-    char* message=malloc(12);
-    message="hello world";
-    printf("envoie des donné \"%s\" sur l'adresse %s:%d\n",message,TARGET_IP,TARGET_PORT);
+    char* message=malloc(512);
+    printf("envoie des donné  sur l'adresse %s:%d\n", TARGET_IP,TARGET_PORT);
 
     while(message!="stop"){
  
-        write(sock,message+'\n',12);
-        message=malloc(20);
- 
-        scanf("%s",message);
+        gets(message);
+        int carSent=send(sock,message,512,0);
+  
      }
 }
