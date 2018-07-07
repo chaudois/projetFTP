@@ -73,27 +73,42 @@ int login()
     }
     return 0;
 }
-void commandeLS()
-{
-    system("ls");
-}
 void readCommandes()
 {
     char *message = malloc(512);
 
     do
     {
-        printf(">");
+        printf("\n>");
         gets(message);
         if (message[0] != '\0' && !strstr(message, "stop"))
         {
-            if (strcmp(message, "ls") == 0)
+            char *commande = strtok(message, " ");
+            char *parametres = strtok(NULL, "");
+            if (strcmp(commande, "ls") == 0)
             {
-                commandeLS();
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                system(totalCommande);
             }
             else if (strcmp(message, "pwd") == 0)
             {
-                printf("\ncommande %s\n", message);
+
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                system(totalCommande);
             }
             else if (strcmp(message, "cd") == 0)
             {
@@ -101,7 +116,16 @@ void readCommandes()
             }
             else if (strcmp(message, "rm") == 0)
             {
-                printf("\ncommande %s\n", message);
+
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                system(totalCommande);
             }
             else if (strcmp(message, "rls") == 0)
             {
@@ -123,12 +147,13 @@ void readCommandes()
             else if (strcmp(message, "downl") == 0)
             {
                 printf("\ncommande %s\n", message);
-            }else{
+            }
+            else
+            {
 
                 printf("\nsending [ %s ]\n", message);
                 write(sock, message, 512);
             }
-
         }
 
     } while (!strstr(message, "stop"));
