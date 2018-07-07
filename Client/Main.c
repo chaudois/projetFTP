@@ -29,7 +29,7 @@ void login()
         read(sock, message, sizeof(message));
     } while (!strstr(message, "WHO"));
 
-    do
+    while (1)
     {
         do
         {
@@ -53,15 +53,21 @@ void login()
         send(sock, message, 512, 0);
 
         read(sock, message, sizeof(message));
-        printf("\n[%s]\n");
         if (strstr(message, "BYE"))
         {
             printf("\ntrop d'essais infructueux,deconnection\n");
             close(socket);
             exit(-1);
         }
-        printf("\nutilisateur inconnu\n");
-    } while (!strstr(message, "WELC"));
+        else if (strstr(message, "NOPE"))
+        {
+            printf("\nutilisateur inconnu\n");
+        }
+        else if (strstr(message, "WELC"))
+        {
+            return 1;
+        }
+    }
 }
 int main()
 {
@@ -102,7 +108,7 @@ int main()
     {
 
         gets(message);
-        if (message[0] != '\0')
+        if (message[0] != '\0' && !strstr(message,"stop"))
         {
 
             printf("\nsending [ %s ]\n", message);

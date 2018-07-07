@@ -17,9 +17,8 @@ typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 const int PORT_ECOUTE = 998;
-const int tailleBuffer=512;
+const int tailleBuffer = 512;
 SOCKET socketServeur;
-int saveFile;
 void readClient(int socket, char *message)
 {
 	memset(message, '0', sizeof(message));
@@ -44,16 +43,30 @@ void closeClient(int socket)
 
 	exit(-1);
 }
+int logUser(char *login, char *password)
+{
+	FILE *saveFile = fopen("saveFile.txt", "r+");
+	char *ligne[tailleBuffer];
+	int nbLine;
+	printf("\nrecherche dans le fichier de sauvegarde...\n");
+	while (fgets(ligne, tailleBuffer, saveFile) > 0)
+	{
+		nbLine = nbLine + 1;
+		printf("\n[%s]\n", ligne);
+		if (strstr(ligne, login) && strstr(ligne, password))
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}
 int loginClient(int socketClient)
 {
 	int loginok = 0;
 	int cptTry = 0;
 	char message[tailleBuffer];
-	char nomClient[tailleBuffer];
-	memset(message, '0', sizeof(message));
-	memset(nomClient, '0', sizeof(nomClient));
-	int tailleRecue = 0;
-
+	char *login[tailleBuffer], password[tailleBuffer];
 	readClient(socketClient, message);
 
 	if (strstr(message, "BONJ"))
@@ -65,7 +78,7 @@ int loginClient(int socketClient)
 			if (send(socketClient, "WHO", tailleBuffer, 0) > 0)
 			{
 
-				readClient(socketClient, message);
+				readClient(socketClient, login);
 			}
 			else
 			{
@@ -73,26 +86,22 @@ int loginClient(int socketClient)
 			}
 			if (send(socketClient, "PASSWD\0", tailleBuffer, 0) > 0)
 			{
-				readClient(socketClient, message);
-				if (message[0] != '\0' && message[0] != '\n')
+				readClient(socketClient, password);
+				cptTry = cptTry + 1;
+
+				if (logUser(login, password))
+				{
+					send(socketClient, "WELC", tailleBuffer, 0);
+					return 1;
+				}
+				else if (cptTry > 2)
+				{
+					send(socketClient, "BYE", tailleBuffer, 0);
+				}
+				else
 				{
 
-					cptTry = cptTry + 1;
-
-					if (1)
-					{
-						send(socketClient, "WELC", tailleBuffer, 0);
-						return 1;
-					}
-					else if (cptTry > 2)
-					{
-						send(socketClient, "BYE", tailleBuffer, 0);
-					}
-					else
-					{
-
-						send(socketClient, "NOPE", tailleBuffer, 0);
-					}
+					send(socketClient, "NOPE", tailleBuffer, 0);
 				}
 			}
 			else
@@ -106,7 +115,7 @@ int loginClient(int socketClient)
 }
 void readCommandClient(int socketClient)
 {
- 
+
 	char letter = '0';
 	char buffer[1024];
 	memset(buffer, '0', sizeof(buffer));
@@ -167,12 +176,15 @@ void startServeur()
 		if (pid == 0)
 		{
 			printf("connexion d'un client avec l'id %d \n", csock);
- 			if(loginClient(csock)){
+			if (loginClient(csock))
+			{
 
 				readCommandClient(csock);
-			 }else{
-				 printf("\nlogin failed\n");
-			 }
+			}
+			else
+			{
+				printf("\nlogin failed\n");
+			}
 			printf("\nDéconexion du client %d\n", csock);
 			exit(EXIT_SUCCESS);
 		}
