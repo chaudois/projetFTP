@@ -21,7 +21,7 @@ const int tailleBuffer = 512;
 SOCKET socketServeur;
 void readClient(int socket, char *message)
 {
-	memset(message, '0', sizeof(message));
+	memset(message, '0', tailleBuffer);
 	read(socket, message, tailleBuffer);
 	printf("\n(%d) [%s]\n", socket, message);
 }
@@ -74,7 +74,7 @@ int loginClient(int socketClient)
 		while (!loginok && cptTry < 3)
 		{
 
-			if (send(socketClient, "WHO", tailleBuffer, 0) > 0)
+			if (write(socketClient, "WHO", tailleBuffer) > 0)
 			{
 
 				readClient(socketClient, login);
@@ -83,25 +83,25 @@ int loginClient(int socketClient)
 			{
 				closeClient(socketClient);
 			}
-			if (send(socketClient, "PASSWD\0", tailleBuffer, 0) > 0)
+			if (write(socketClient, "PASSWD\0", tailleBuffer) > 0)
 			{
 				readClient(socketClient, password);
 				cptTry = cptTry + 1;
 
 				if (logUser(login, password))
 				{
-					send(socketClient, "WELC", tailleBuffer, 0);
+					write(socketClient, "WELC", tailleBuffer);
 					return 1;
 				}
 				else if (cptTry > 2)
 				{
-					send(socketClient, "BYE", tailleBuffer, 0);
+					write(socketClient, "BYE", tailleBuffer);
 					closeClient(socketClient);
 				}
 				else
 				{
 
-					send(socketClient, "NOPE", tailleBuffer, 0);
+					write(socketClient, "NOPE", tailleBuffer);
 				}
 			}
 			else

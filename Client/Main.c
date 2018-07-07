@@ -18,6 +18,7 @@ typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 SOCKET sock;
+char *dir[512];
 int login()
 {
     char *message[512];
@@ -39,7 +40,7 @@ int login()
 
         } while (login[0] == '\0' || login[0] == '\n');
 
-        send(sock, login, 512, 0);
+        write(sock, login, 512);
         do
         {
 
@@ -51,7 +52,7 @@ int login()
             gets(message);
 
         } while (message[0] == '\0' || message[0] == '\n');
-        send(sock, message, 512, 0);
+        write(sock, message, 512);
 
         read(sock, message, sizeof(message));
         if (strstr(message, "BYE"))
@@ -71,6 +72,66 @@ int login()
         }
     }
     return 0;
+}
+void commandeLS()
+{
+    system("ls");
+}
+void readCommandes()
+{
+    char *message = malloc(512);
+
+    do
+    {
+        printf(">");
+        gets(message);
+        if (message[0] != '\0' && !strstr(message, "stop"))
+        {
+            if (strcmp(message, "ls") == 0)
+            {
+                commandeLS();
+            }
+            else if (strcmp(message, "pwd") == 0)
+            {
+                printf("\ncommande %s\n", message);
+            }
+            else if (strcmp(message, "cd") == 0)
+            {
+                printf("\ncommande %s\n", message);
+            }
+            else if (strcmp(message, "rm") == 0)
+            {
+                printf("\ncommande %s\n", message);
+            }
+            else if (strcmp(message, "rls") == 0)
+            {
+                printf("\ncommande %s\n", message);
+            }
+            else if (strcmp(message, "rcd") == 0)
+            {
+                printf("\ncommande %s\n", message);
+            }
+
+            else if (strcmp(message, "rpwd") == 0)
+            {
+                printf("\ncommande %s\n", message);
+            }
+            else if (strcmp(message, "upld") == 0)
+            {
+                printf("\ncommande %s\n", message);
+            }
+            else if (strcmp(message, "downl") == 0)
+            {
+                printf("\ncommande %s\n", message);
+            }else{
+
+                printf("\nsending [ %s ]\n", message);
+                write(sock, message, 512);
+            }
+
+        }
+
+    } while (!strstr(message, "stop"));
 }
 int main()
 {
@@ -100,26 +161,12 @@ int main()
         exit(-1);
     }
 
-    char *message = malloc(512);
     printf("connecté  sur l'adresse %s:%d\n", TARGET_IP, TARGET_PORT);
-
-    message[0] = '\0';
 
     if (!login())
     {
         printf("\ntrop d'essais infructueux,deconnection\n");
         exit(0);
     }
-    do
-    {
-        printf(">");
-        gets(message);
-        if (message[0] != '\0' && !strstr(message, "stop"))
-        {
-
-            printf("\nsending [ %s ]\n", message);
-            int carSent = send(sock, message, 512, 0);
-        }
-
-    } while (!strstr(message, "stop"));
+    readCommandes();
 }
