@@ -18,9 +18,10 @@ typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 SOCKET sock;
-void login()
+int login()
 {
     char *message[512];
+    char *login[512];
     int tailleRecue = 0;
 
     int carSent = send(sock, "BONJ\0", 512, 0);
@@ -34,11 +35,11 @@ void login()
         do
         {
             printf("\nlogin : ");
-            gets(message);
+            gets(login);
 
-        } while (message[0] == '\0' || message[0] == '\n');
+        } while (login[0] == '\0' || login[0] == '\n');
 
-        send(sock, message, 512, 0);
+        send(sock, login, 512, 0);
         do
         {
 
@@ -55,19 +56,21 @@ void login()
         read(sock, message, sizeof(message));
         if (strstr(message, "BYE"))
         {
-            printf("\ntrop d'essais infructueux,deconnection\n");
-            close(socket);
-            exit(-1);
+            break;
         }
-        else if (strstr(message, "NOPE"))
+        if (strstr(message, "NOPE"))
         {
             printf("\nutilisateur inconnu\n");
         }
         else if (strstr(message, "WELC"))
         {
+            printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+            printf("\nconnecté en temps que [%s]\n", login);
+
             return 1;
         }
     }
+    return 0;
 }
 int main()
 {
@@ -102,13 +105,16 @@ int main()
 
     message[0] = '\0';
 
-    login();
-    printf("\nlogin OK\n");
+    if (!login())
+    {
+        printf("\ntrop d'essais infructueux,deconnection\n");
+        exit(0);
+    }
     do
     {
-
+        printf(">");
         gets(message);
-        if (message[0] != '\0' && !strstr(message,"stop"))
+        if (message[0] != '\0' && !strstr(message, "stop"))
         {
 
             printf("\nsending [ %s ]\n", message);

@@ -47,18 +47,17 @@ int logUser(char *login, char *password)
 {
 	FILE *saveFile = fopen("saveFile.txt", "r+");
 	char *ligne[tailleBuffer];
-	int nbLine;
-	printf("\nrecherche dans le fichier de sauvegarde...\n");
 	while (fgets(ligne, tailleBuffer, saveFile) > 0)
 	{
-		nbLine = nbLine + 1;
-		printf("\n[%s]\n", ligne);
-		if (strstr(ligne, login) && strstr(ligne, password))
+ 		char *loginLigne = strtok(ligne, " ");
+		char *passwordLigne = strtok(NULL, "\n");
+		if (strcmp(loginLigne, login) == 0 && strcmp(passwordLigne, password) == 0)
 		{
 			return 1;
 		}
 	}
 
+	close(saveFile);
 	return 0;
 }
 int loginClient(int socketClient)
@@ -97,6 +96,7 @@ int loginClient(int socketClient)
 				else if (cptTry > 2)
 				{
 					send(socketClient, "BYE", tailleBuffer, 0);
+					closeClient(socketClient);
 				}
 				else
 				{
