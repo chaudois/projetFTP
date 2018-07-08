@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <string.h>
+#include <errno.h>
+
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -65,7 +67,7 @@ int login()
         }
         else if (strstr(message, "WELC"))
         {
-            printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+            system("clear");
             printf("\nconnecté en temps que [%s]\n", login);
 
             return 1;
@@ -112,7 +114,26 @@ void readCommandes()
             }
             else if (strcmp(message, "cd") == 0)
             {
-                printf("\ncommande %s\n", message);
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                if (chdir(parametres) == -1)
+                {
+                    switch (errno)
+                    {
+                    case EACCES:
+                        printf("\naccès refusé. Lancez le client en mode administrateur\n");
+                        break;
+                    case ENOENT:
+                        printf("\nCe repertoire n'existe pas\n");
+                        break;
+                    }
+                }
             }
             else if (strcmp(message, "rm") == 0)
             {
@@ -151,8 +172,7 @@ void readCommandes()
             else
             {
 
-                printf("\nsending [ %s ]\n", message);
-                write(sock, message, 512);
+                printf("commande inconnue : [%s]", message);
             }
         }
 
@@ -160,6 +180,7 @@ void readCommandes()
 }
 int main()
 {
+    system("pwd");
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET)
     {
