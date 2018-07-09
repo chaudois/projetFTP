@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
@@ -21,6 +22,16 @@ typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 SOCKET sock;
 char *dir[512];
+void sig_handler(int signo)
+{
+	if (signo == SIGINT)
+	{
+		printf("\nFermeture...\n");
+		close(sock);
+	}
+	exit(0);
+}
+
 int login()
 {
     char *message[512];
@@ -214,10 +225,8 @@ void readCommandes()
 
     } while (!strstr(message, "stop"));
 }
-int main()
-{
-    system("clear");
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+void connection(){
+sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET)
     {
         perror("socket()");
@@ -245,6 +254,14 @@ int main()
 
     printf("connecté  sur l'adresse %s:%d\n", TARGET_IP, TARGET_PORT);
 
+}
+int main()
+{
+    system("clear");
+    signal(SIGINT, sig_handler);
+
+    connection();
+    
     if (!login())
     {
         printf("\ntrop d'essais infructueux,deconnection\n");

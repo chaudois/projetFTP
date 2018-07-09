@@ -118,6 +118,45 @@ int loginClient(int socketClient)
 
 	return 0;
 }
+void diagnoseExecFail(int retourExec,int target)
+{
+	switch (retourExec)
+	{
+	case E2BIG:
+		send(target, "The number of bytes in the new process's argument list is larger than the system-imposed limit", 2048, 0);
+		break;
+	case EACCES:
+		send(target, "Search permission is denied for a component of the path prefix", 2048, 0);
+		break;
+	case EFAULT:
+		send(target, "The new process file is not as long as indicated by the size values in its header", 2048, 0);
+		break;
+	case EIO:
+		send(target, "An I/O error occurred while reading from the file system", 2048, 0);
+		break;
+	case ELOOP:
+		send(target, "Too many symbolic links were encountered in translating the pathname. This is taken to be indicative of a looping symbolic link.", 2048, 0);
+		break;
+	case ENAMETOOLONG:
+		send(target, "A component of a pathname exceeded {NAME_MAX} characters, or an entire path name exceeded {PATH_MAX} characters.", 2048, 0);
+		break;
+	case ENOENT:
+		send(target, "The new process file does not exist.", 2048, 0);
+		break;
+	case ENOEXEC:
+		send(target, "The new process file has the appropriate access permission, but has an unrecognized format (e.g., an invalid magic number in its header).", 2048, 0);
+		break;
+	case ENOMEM:
+		send(target, "The new process requires more virtual memory than is allowed by the imposed maximum (getrlimit(2)).", 2048, 0);
+		break;
+	case ENOTDIR:
+		send(target, " A component of the path prefix is not a directory.", 2048, 0);
+		break;
+	case ETXTBSY:
+		send(target, "The new process file is a pure procedure (shared text) file that is currently open for writing or reading by some process.", 2048, 0);
+		break;
+	}
+}
 void readCommandClient(int socketClient)
 {
 
@@ -175,51 +214,75 @@ void readCommandClient(int socketClient)
 
 				int resultCommande = open("/resultatCommande.txt", O_CREAT | O_RDWR, 0666);
 				dup2(resultCommande, STDOUT_FILENO);
-				system(totalCommande);
-				close(resultCommande);
+				char *arguments[] = {"ls", parametres, NULL};
 
+				if (execv("/bin/ls", arguments) == -1)
+				{
+					close(resultCommande);
+					exit(errno);
+				}
+				close(resultCommande);
 				exit(0);
 			}
-			wait();
-			int resultCommande = open("/resultatCommande.txt", O_RDONLY, 0666);
+			int retourExec = 0;
+			wait(&retourExec);
+			retourExec = retourExec / 256;
+			if (retourExec != 0)
+			{
+				system("rm /resultatCommande.txt");
+				diagnoseExecFail(retourExec,socketClient);
+			}
+			else
+			{
 
-			char *fileContent = malloc(2048);
-			int nblu = read(resultCommande, fileContent, 2048);
+				int resultCommande = open("/resultatCommande.txt", O_RDONLY, 0666);
 
-			close(resultCommande);
-			system("rm /resultatCommande.txt");
-			send(socketClient, fileContent, 2048, 0);
+				char *fileContent = malloc(2048);
+				int nblu = read(resultCommande, fileContent, 2048);
+
+				close(resultCommande);
+				system("rm /resultatCommande.txt");
+				send(socketClient, fileContent, 2048, 0);
+			}
 		}
 		else if (strcmp(commande, "rpwd") == 0)
 		{
 			int pid = fork();
 			if (pid == 0)
-			{
-				char *totalCommande[512];
-				strcpy(totalCommande, "pwd");
-				if (parametres != NULL)
-				{
-
-					strcat(totalCommande, " ");
-					strcat(totalCommande, parametres);
-				}
+			{ 
 
 				int resultCommande = open("/resultatCommande.txt", O_CREAT | O_RDWR, 0666);
 				dup2(resultCommande, STDOUT_FILENO);
-				system(totalCommande);
-				close(resultCommande);
+				char *arguments[] = {"pwd", parametres, NULL};
 
+				if (execv("/bin/pwd", arguments) == -1)
+				{
+					close(resultCommande);
+					exit(errno);
+				}
+				close(resultCommande);
 				exit(0);
 			}
-			wait();
-			int resultCommande = open("/resultatCommande.txt", O_RDONLY, 0666);
+			int retourExec = 0;
+			wait(&retourExec);
+			retourExec = retourExec / 256;
+			if (retourExec != 0)
+			{
+				system("rm /resultatCommande.txt");
+				diagnoseExecFail(retourExec,socketClient);
+			}
+			else
+			{
 
-			char *fileContent = malloc(2048);
-			int nblu = read(resultCommande, fileContent, 2048);
+				int resultCommande = open("/resultatCommande.txt", O_RDONLY, 0666);
 
-			close(resultCommande);
-			system("rm /resultatCommande.txt");
-			send(socketClient, fileContent, 2048, 0);
+				char *fileContent = malloc(2048);
+				int nblu = read(resultCommande, fileContent, 2048);
+
+				close(resultCommande);
+				system("rm /resultatCommande.txt");
+				send(socketClient, fileContent, 2048, 0);
+			}
 		}
 	} while (tailleRecue > 0);
 }
