@@ -9,6 +9,11 @@
 #include <string.h>
 #include <signal.h>
 #include <assert.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -17,13 +22,13 @@ typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 const int PORT_ECOUTE = 998;
-const int tailleBuffer = 512;
+const int taillemessage = 512;
 SOCKET socketServeur;
-void readClient(int socket, char *message)
+int readClient(int socket, char *message)
 {
-	memset(message, '0', tailleBuffer);
-	read(socket, message, tailleBuffer);
-	printf("\n(%d) [%s]\n", socket, message);
+	memset(message, '0', taillemessage);
+	int lu = read(socket, message, taillemessage);
+	return lu;
 }
 
 void sig_handler(int signo)
@@ -46,10 +51,10 @@ void closeClient(int socket)
 int logUser(char *login, char *password)
 {
 	FILE *saveFile = fopen("saveFile.txt", "r+");
-	char *ligne[tailleBuffer];
-	while (fgets(ligne, tailleBuffer, saveFile) > 0)
+	char *ligne[taillemessage];
+	while (fgets(ligne, taillemessage, saveFile) > 0)
 	{
- 		char *loginLigne = strtok(ligne, " ");
+		char *loginLigne = strtok(ligne, " ");
 		char *passwordLigne = strtok(NULL, "\n");
 		if (strcmp(loginLigne, login) == 0 && strcmp(passwordLigne, password) == 0)
 		{
@@ -64,8 +69,8 @@ int loginClient(int socketClient)
 {
 	int loginok = 0;
 	int cptTry = 0;
-	char message[tailleBuffer];
-	char *login[tailleBuffer], password[tailleBuffer];
+	char message[taillemessage];
+	char *login[taillemessage], password[taillemessage];
 	readClient(socketClient, message);
 
 	if (strstr(message, "BONJ"))
@@ -74,7 +79,7 @@ int loginClient(int socketClient)
 		while (!loginok && cptTry < 3)
 		{
 
-			if (write(socketClient, "WHO", tailleBuffer) > 0)
+			if (write(socketClient, "WHO", taillemessage) > 0)
 			{
 
 				readClient(socketClient, login);
@@ -83,25 +88,25 @@ int loginClient(int socketClient)
 			{
 				closeClient(socketClient);
 			}
-			if (write(socketClient, "PASSWD\0", tailleBuffer) > 0)
+			if (write(socketClient, "PASSWD\0", taillemessage) > 0)
 			{
 				readClient(socketClient, password);
 				cptTry = cptTry + 1;
 
 				if (logUser(login, password))
 				{
-					write(socketClient, "WELC", tailleBuffer);
+					write(socketClient, "WELC", taillemessage);
 					return 1;
 				}
 				else if (cptTry > 2)
 				{
-					write(socketClient, "BYE", tailleBuffer);
+					write(socketClient, "BYE", taillemessage);
 					closeClient(socketClient);
 				}
 				else
 				{
 
-					write(socketClient, "NOPE", tailleBuffer);
+					write(socketClient, "NOPE", taillemessage);
 				}
 			}
 			else
@@ -116,18 +121,101 @@ int loginClient(int socketClient)
 void readCommandClient(int socketClient)
 {
 
-	char letter = '0';
-	char buffer[1024];
-	memset(buffer, '0', sizeof(buffer));
-
 	int tailleRecue = 0;
-	while ((tailleRecue = read(socketClient, buffer, sizeof(buffer) - 1) > 0))
+	do
 	{
-		if (buffer[0] != '\0')
+		char message[1024];
+		memset(message, '0', sizeof(message));
+		tailleRecue = readClient(socketClient, message);
+
+		char *commande = strtok(message, " ");
+		char *parametres = strtok(NULL, "");
+
+		printf("\n(%d)>[%s]+[%s]\n", socketClient, commande,parametres);
+		if (strcmp(commande, "rcd") == 0)
 		{
-			printf("\n(%d) : [ %s ]\n", socketClient, buffer);
+			char *totalCommande[512];
+			strcpy(totalCommande, "cd");
+			if (parametres != NULL)
+			{
+
+				strcat(totalCommande, " ");
+				strcat(totalCommande, parametres);
+			}
+			if (chdir(parametres) == -1)
+			{
+				switch (errno)
+				{
+				case EACCES:
+					send(socketClient, "accès refusé. Lancez le client en mode administrateur", 512, 0);
+					break;
+				case ENOENT:
+					send(socketClient, "Ce repertoire n'existe pas", 512, 0);
+
+					break;
+				}
+			}
+			else
+			{
+				send(socketClient, "OK", 512, 0);
+			}
 		}
-	}
+		else if (strcmp(commande, "rls") == 0)
+		{
+			int pid = fork();
+			if (pid == 0)
+			{
+				char *totalCommande[512];
+				strcpy(totalCommande, "ls");
+				if (parametres != NULL)
+				{
+
+					strcat(totalCommande, " ");
+					strcat(totalCommande, parametres);
+				}
+
+				int resultCommande = open("resultatCommande.txt", O_CREAT | O_RDWR, 0666);
+				dup2(resultCommande, STDOUT_FILENO);
+				system(totalCommande);
+				lseek(resultCommande, 0, 0);
+				char fileContent[2048];
+				int nblu = read(resultCommande, fileContent, 2048);
+				close(resultCommande);
+				// system("rm resultatCommande.txt");
+				send(socketClient, fileContent, 2048, 0);
+				exit(0);
+			}
+			wait();
+		}
+		else if (strcmp(commande, "rpwd") == 0)
+		{
+ 			int pid = fork();
+			if (pid == 0)
+			{
+				char *totalCommande[512];
+				strcpy(totalCommande, "pwd");
+				if (parametres != NULL)
+				{
+
+					strcat(totalCommande, " ");
+					strcat(totalCommande, parametres);
+				}
+
+
+				int resultCommande = open("resultatCommande.txt", O_CREAT | O_RDWR, 0666);
+				dup2(resultCommande, STDOUT_FILENO);
+				system(totalCommande);
+				lseek(resultCommande, 0, 0);
+				char fileContent[2048];
+				int nblu = read(resultCommande, fileContent, 2048);
+				close(resultCommande);
+				// system("rm resultatCommande.txt");
+				send(socketClient, fileContent, 2048, 0);
+				exit(0);
+			}
+			wait();
+		}
+	} while (tailleRecue > 0);
 }
 void startServeur()
 {

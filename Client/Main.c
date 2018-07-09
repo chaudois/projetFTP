@@ -150,16 +150,56 @@ void readCommandes()
             }
             else if (strcmp(message, "rls") == 0)
             {
-                printf("\ncommande %s\n", message);
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                write(sock, totalCommande, 512);
+                char *retour[2048];
+                read(sock, retour, 2048);
+                printf("\n%s\n", retour);
             }
             else if (strcmp(message, "rcd") == 0)
             {
-                printf("\ncommande %s\n", message);
+
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                write(sock, totalCommande, 512);
+                char *retour[512];
+                read(sock, retour, 512);
+                if (strstr(retour, "OK") == 0)
+                {
+                    printf("\n[%s]\n", retour);
+                }
             }
 
             else if (strcmp(message, "rpwd") == 0)
             {
-                printf("\ncommande %s\n", message);
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                write(sock, totalCommande, 512);
+                char *retour[512];
+                read(sock, retour, 512);
+                if (strstr(retour, "OK") == 0)
+                {
+                    printf("\n[%s]\n", retour);
+                }
             }
             else if (strcmp(message, "upld") == 0)
             {
@@ -180,7 +220,7 @@ void readCommandes()
 }
 int main()
 {
-    system("pwd");
+    system("clear");
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET)
     {
