@@ -24,12 +24,51 @@ SOCKET sock;
 char *dir[512];
 void sig_handler(int signo)
 {
-	if (signo == SIGINT)
-	{
-		printf("\nFermeture...\n");
-		close(sock);
-	}
-	exit(0);
+    if (signo == SIGINT)
+    {
+        printf("\nFermeture...\n");
+        close(sock);
+    }
+    exit(0);
+}
+void diagnoseExecFail(int retourExec)
+{
+    switch (retourExec)
+    {
+    case E2BIG:
+        printf("The number of bytes in the new process's argument list is larger than the system-imposed limit");
+        break;
+    case EACCES:
+        printf("Search permission is denied for a component of the path prefix");
+        break;
+    case EFAULT:
+        printf("The new process file is not as long as indicated by the size values in its header");
+        break;
+    case EIO:
+        printf("An I/O error occurred while reading from the file system");
+        break;
+    case ELOOP:
+        printf("Too many symbolic links were encountered in translating the pathname. This is taken to be indicative of a looping symbolic link.");
+        break;
+    case ENAMETOOLONG:
+        printf("A component of a pathname exceeded {NAME_MAX} characters, or an entire path name exceeded {PATH_MAX} characters.");
+        break;
+    case ENOENT:
+        printf("The new process file does not exist.");
+        break;
+    case ENOEXEC:
+        printf("The new process file has the appropriate access permission, but has an unrecognized format (e.g., an invalid magic number in its header).");
+        break;
+    case ENOMEM:
+        printf("The new process requires more virtual memory than is allowed by the imposed maximum (getrlimit(2)).");
+        break;
+    case ENOTDIR:
+        printf(" A component of the path prefix is not a directory.");
+        break;
+    case ETXTBSY:
+        printf("The new process file is a pure procedure (shared text) file that is currently open for writing or reading by some process.");
+        break;
+    }
 }
 
 int login()
@@ -100,28 +139,36 @@ void readCommandes()
             char *parametres = strtok(NULL, "");
             if (strcmp(commande, "ls") == 0)
             {
-                char *totalCommande[512];
-                strcpy(totalCommande, message);
-                if (parametres != NULL)
+                int pid = fork();
+                if (pid == 0)
                 {
 
-                    strcat(totalCommande, " ");
-                    strcat(totalCommande, parametres);
+                    char *arguments[] = {"ls", parametres, NULL};
+
+                    if (execv("/bin/ls", arguments) == -1)
+                    {
+                        diagnoseExecFail(errno);
+                    }
+                    exit(0);
                 }
-                system(totalCommande);
+                wait();
             }
             else if (strcmp(message, "pwd") == 0)
             {
 
-                char *totalCommande[512];
-                strcpy(totalCommande, message);
-                if (parametres != NULL)
+                int pid = fork();
+                if (pid == 0)
                 {
 
-                    strcat(totalCommande, " ");
-                    strcat(totalCommande, parametres);
+                    char *arguments[] = {"pwd", parametres, NULL};
+
+                    if (execv("/bin/pwd", arguments) == -1)
+                    {
+                        diagnoseExecFail(errno);
+                    }
+                    exit(0);
                 }
-                system(totalCommande);
+                wait();
             }
             else if (strcmp(message, "cd") == 0)
             {
@@ -149,15 +196,19 @@ void readCommandes()
             else if (strcmp(message, "rm") == 0)
             {
 
-                char *totalCommande[512];
-                strcpy(totalCommande, message);
-                if (parametres != NULL)
+                int pid = fork();
+                if (pid == 0)
                 {
 
-                    strcat(totalCommande, " ");
-                    strcat(totalCommande, parametres);
+                    char *arguments[] = {"rm", parametres, NULL};
+
+                    if (execv("/bin/rm", arguments) == -1)
+                    {
+                        diagnoseExecFail(errno);
+                    }
+                    exit(0);
                 }
-                system(totalCommande);
+                wait();
             }
             else if (strcmp(message, "rls") == 0)
             {
@@ -188,7 +239,7 @@ void readCommandes()
                 write(sock, totalCommande, 512);
                 char *retour[512];
                 read(sock, retour, 512);
-                if (!strstr(retour, "OK") )
+                if (!strstr(retour, "OK"))
                 {
                     printf("\n[%s]\n", retour);
                 }
@@ -207,7 +258,7 @@ void readCommandes()
                 char *retour[2048];
                 read(sock, retour, 2048);
                 printf("\n%s\n", retour);
-             }
+            }
             else if (strcmp(message, "upld") == 0)
             {
                 printf("\ncommande %s\n", message);
@@ -225,8 +276,9 @@ void readCommandes()
 
     } while (!strstr(message, "stop"));
 }
-void connection(){
-sock = socket(AF_INET, SOCK_STREAM, 0);
+void connection()
+{
+    sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET)
     {
         perror("socket()");
@@ -253,7 +305,6 @@ sock = socket(AF_INET, SOCK_STREAM, 0);
     }
 
     printf("connecté  sur l'adresse %s:%d\n", TARGET_IP, TARGET_PORT);
-
 }
 int main()
 {
@@ -261,7 +312,7 @@ int main()
     signal(SIGINT, sig_handler);
 
     connection();
-    
+
     if (!login())
     {
         printf("\ntrop d'essais infructueux,deconnection\n");

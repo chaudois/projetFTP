@@ -40,7 +40,22 @@ void sig_handler(int signo)
 	}
 	exit(-1);
 }
+void removeResultatCommande()
+{
+	int pid = fork();
+	if (pid == 0)
+	{
 
+		char *arguments[] = {"rm", "/resultatCommande.txt", NULL};
+
+		if (execv("/bin/rm", arguments) == -1)
+		{
+			printf("\n---fuckedup---\n");
+		}
+		exit(0);
+	}
+	wait();
+}
 void closeClient(int socket)
 {
 	close(socket);
@@ -118,7 +133,7 @@ int loginClient(int socketClient)
 
 	return 0;
 }
-void diagnoseExecFail(int retourExec,int target)
+void diagnoseExecFail(int retourExec, int target)
 {
 	switch (retourExec)
 	{
@@ -203,25 +218,16 @@ void readCommandClient(int socketClient)
 			int pid = fork();
 			if (pid == 0)
 			{
-				char *totalCommande[512];
-				strcpy(totalCommande, "ls");
-				if (parametres != NULL)
-				{
-
-					strcat(totalCommande, " ");
-					strcat(totalCommande, parametres);
-				}
 
 				int resultCommande = open("/resultatCommande.txt", O_CREAT | O_RDWR, 0666);
 				dup2(resultCommande, STDOUT_FILENO);
 				char *arguments[] = {"ls", parametres, NULL};
+				close(resultCommande);
 
 				if (execv("/bin/ls", arguments) == -1)
 				{
-					close(resultCommande);
 					exit(errno);
 				}
-				close(resultCommande);
 				exit(0);
 			}
 			int retourExec = 0;
@@ -229,8 +235,8 @@ void readCommandClient(int socketClient)
 			retourExec = retourExec / 256;
 			if (retourExec != 0)
 			{
-				system("rm /resultatCommande.txt");
-				diagnoseExecFail(retourExec,socketClient);
+				removeResultatCommande();
+				diagnoseExecFail(retourExec, socketClient);
 			}
 			else
 			{
@@ -241,7 +247,7 @@ void readCommandClient(int socketClient)
 				int nblu = read(resultCommande, fileContent, 2048);
 
 				close(resultCommande);
-				system("rm /resultatCommande.txt");
+				removeResultatCommande();
 				send(socketClient, fileContent, 2048, 0);
 			}
 		}
@@ -249,18 +255,17 @@ void readCommandClient(int socketClient)
 		{
 			int pid = fork();
 			if (pid == 0)
-			{ 
+			{
 
 				int resultCommande = open("/resultatCommande.txt", O_CREAT | O_RDWR, 0666);
 				dup2(resultCommande, STDOUT_FILENO);
 				char *arguments[] = {"pwd", parametres, NULL};
 
+				close(resultCommande);
 				if (execv("/bin/pwd", arguments) == -1)
 				{
-					close(resultCommande);
 					exit(errno);
 				}
-				close(resultCommande);
 				exit(0);
 			}
 			int retourExec = 0;
@@ -268,8 +273,8 @@ void readCommandClient(int socketClient)
 			retourExec = retourExec / 256;
 			if (retourExec != 0)
 			{
-				system("rm /resultatCommande.txt");
-				diagnoseExecFail(retourExec,socketClient);
+				removeResultatCommande();
+				diagnoseExecFail(retourExec, socketClient);
 			}
 			else
 			{
@@ -280,7 +285,7 @@ void readCommandClient(int socketClient)
 				int nblu = read(resultCommande, fileContent, 2048);
 
 				close(resultCommande);
-				system("rm /resultatCommande.txt");
+				removeResultatCommande();
 				send(socketClient, fileContent, 2048, 0);
 			}
 		}
@@ -312,7 +317,7 @@ void startServeur()
 		perror("listen()");
 		exit(-1);
 	}
-	printf("Le serveur écoute sur le port %d \n", PORT_ECOUTE);
+	printf("\nLe serveur écoute sur le port %d \n", PORT_ECOUTE);
 	SOCKADDR_IN csin = {0};
 	SOCKET csock;
 
