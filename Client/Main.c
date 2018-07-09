@@ -177,12 +177,11 @@ void readCommandes()
                 write(sock, totalCommande, 512);
                 char *retour[512];
                 read(sock, retour, 512);
-                if (strstr(retour, "OK") == 0)
+                if (!strstr(retour, "OK") )
                 {
                     printf("\n[%s]\n", retour);
                 }
             }
-
             else if (strcmp(message, "rpwd") == 0)
             {
                 char *totalCommande[512];
@@ -194,13 +193,10 @@ void readCommandes()
                     strcat(totalCommande, parametres);
                 }
                 write(sock, totalCommande, 512);
-                char *retour[512];
-                read(sock, retour, 512);
-                if (strstr(retour, "OK") == 0)
-                {
-                    printf("\n[%s]\n", retour);
-                }
-            }
+                char *retour[2048];
+                read(sock, retour, 2048);
+                printf("\n%s\n", retour);
+             }
             else if (strcmp(message, "upld") == 0)
             {
                 printf("\ncommande %s\n", message);

@@ -131,7 +131,6 @@ void readCommandClient(int socketClient)
 		char *commande = strtok(message, " ");
 		char *parametres = strtok(NULL, "");
 
-		printf("\n(%d)>[%s]+[%s]\n", socketClient, commande,parametres);
 		if (strcmp(commande, "rcd") == 0)
 		{
 			char *totalCommande[512];
@@ -174,22 +173,26 @@ void readCommandClient(int socketClient)
 					strcat(totalCommande, parametres);
 				}
 
-				int resultCommande = open("resultatCommande.txt", O_CREAT | O_RDWR, 0666);
+				int resultCommande = open("/resultatCommande.txt", O_CREAT | O_RDWR, 0666);
 				dup2(resultCommande, STDOUT_FILENO);
 				system(totalCommande);
-				lseek(resultCommande, 0, 0);
-				char fileContent[2048];
-				int nblu = read(resultCommande, fileContent, 2048);
 				close(resultCommande);
-				// system("rm resultatCommande.txt");
-				send(socketClient, fileContent, 2048, 0);
+
 				exit(0);
 			}
 			wait();
+			int resultCommande = open("/resultatCommande.txt", O_RDONLY, 0666);
+
+			char *fileContent = malloc(2048);
+			int nblu = read(resultCommande, fileContent, 2048);
+
+			close(resultCommande);
+			system("rm /resultatCommande.txt");
+			send(socketClient, fileContent, 2048, 0);
 		}
 		else if (strcmp(commande, "rpwd") == 0)
 		{
- 			int pid = fork();
+			int pid = fork();
 			if (pid == 0)
 			{
 				char *totalCommande[512];
@@ -201,19 +204,22 @@ void readCommandClient(int socketClient)
 					strcat(totalCommande, parametres);
 				}
 
-
-				int resultCommande = open("resultatCommande.txt", O_CREAT | O_RDWR, 0666);
+				int resultCommande = open("/resultatCommande.txt", O_CREAT | O_RDWR, 0666);
 				dup2(resultCommande, STDOUT_FILENO);
 				system(totalCommande);
-				lseek(resultCommande, 0, 0);
-				char fileContent[2048];
-				int nblu = read(resultCommande, fileContent, 2048);
 				close(resultCommande);
-				// system("rm resultatCommande.txt");
-				send(socketClient, fileContent, 2048, 0);
+
 				exit(0);
 			}
 			wait();
+			int resultCommande = open("/resultatCommande.txt", O_RDONLY, 0666);
+
+			char *fileContent = malloc(2048);
+			int nblu = read(resultCommande, fileContent, 2048);
+
+			close(resultCommande);
+			system("rm /resultatCommande.txt");
+			send(socketClient, fileContent, 2048, 0);
 		}
 	} while (tailleRecue > 0);
 }
