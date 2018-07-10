@@ -289,6 +289,57 @@ void readCommandClient(int socketClient)
 				send(socketClient, fileContent, 2048, 0);
 			}
 		}
+		else if (strcmp(commande, "downl") == 0)
+		{
+			int pid = fork();
+			printf("\nrecu downl %s %s \n",commande,parametres );
+			if (pid == 0)
+			{
+				int socketUpld = socket(AF_INET, SOCK_STREAM, 0);
+				if (socketUpld == INVALID_SOCKET)
+				{
+					perror("socket()");
+					exit(-1);
+				}
+				SOCKADDR_IN sin = {0};
+
+				sin.sin_addr.s_addr = htonl(INADDR_ANY);
+
+				sin.sin_family = AF_INET;
+				int porDownl = 999;
+				sin.sin_port = htons(porDownl);
+
+				while (bind(socketServeur, (SOCKADDR *)&sin, sizeof sin) == SOCKET_ERROR)
+				{
+					porDownl = porDownl + 1;
+				}
+				send("RDY %d",porDownl,512,0);
+				if (listen(socketServeur, 0) == SOCKET_ERROR)
+				{
+					perror("listen()");
+					exit(-1);
+				}
+				printf("\nLe download commence sur le port %d \n", porDownl);
+				SOCKADDR_IN csin = {0};
+				SOCKET csock;
+
+				int sinsize = sizeof csin;
+
+				int continuer = 1;
+				csock = accept(socketServeur, (SOCKADDR *)&csin, &sinsize);
+
+				printf("\nfork & socket OK début du transfert\n");
+
+				//TODO 1 ouvrir le flux de fichier à download en geant les erreurs de type pas de fichier présent
+				FILE *saveFile = fopen(parametres, "r");
+				char *chunk[2048];
+				while (read(chunk, 2048 ,saveFile) > 0)
+				{
+					send(csock,chunk,2048,0);
+				}
+				printf("\nfichier envoyé\n");
+			}
+		}
 	} while (tailleRecue > 0);
 }
 void startServeur()

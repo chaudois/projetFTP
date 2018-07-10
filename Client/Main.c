@@ -265,7 +265,65 @@ void readCommandes()
             }
             else if (strcmp(message, "downl") == 0)
             {
-                printf("\ncommande %s\n", message);
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                write(sock, totalCommande, 512);
+                char reponsePort[512];
+                read(sock, reponsePort, 512);
+
+                char *commande = strtok(message, " ");
+                char *parametres = strtok(NULL, "");
+                int portNumDownl = 0;
+                if (!strstr(commande, "RDY") || parametres == NULL)
+                {
+                    printf("\nerreur : resultat incoherant\n");
+                    exit(-1);
+                }
+                portNumDownl = atoi(parametres);
+                int pid = fork();
+                if (pid == 0)
+                {
+                    int sockDownl = socket(AF_INET, SOCK_STREAM, 0);
+                    if (sockDownl == INVALID_SOCKET)
+                    {
+                        perror("socket()");
+                        exit(-1);
+                    }
+                    struct hostent *hostinfo = NULL;
+                    SOCKADDR_IN sin = {0};
+
+                    hostinfo = gethostbyname(TARGET_IP);
+                    if (hostinfo == NULL)
+                    {
+                        fprintf(stderr, "Unknown host %s.\n", TARGET_IP);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr; /* l'adresse se trouve dans le champ h_addr de la structure hostinfo */
+                    sin.sin_port = htons(portNumDownl);          /* on utilise htons pour le port */
+                    sin.sin_family = AF_INET;
+
+                    if (connect(sockDownl, (SOCKADDR *)&sin, sizeof(SOCKADDR)) == SOCKET_ERROR)
+                    {
+                        perror("connect()");
+                        exit(-1);
+                    }
+
+                    printf("\ndébut du download...\n");
+                    FILE *saveFileDownl = fopen(parametres, "w+");
+                    char *chunk[2048];
+                    while (read(chunk, 2048, sockDownl) > 0)
+                    {
+                        send(saveFileDownl, chunk, 2048, 0);
+                    }
+                    printf("\nfin du download...\n");
+                }
             }
             else
             {
