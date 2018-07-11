@@ -23,7 +23,7 @@ typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 const int PORT_ECOUTE = 998;
 const int taillemessage = 512;
-SOCKET socketServeur;
+SOCKET socketServeur, socketDownl;
 int readClient(int socket, char *message)
 {
 	memset(message, '0', taillemessage);
@@ -170,6 +170,9 @@ void diagnoseExecFail(int retourExec, int target)
 	case ETXTBSY:
 		send(target, "The new process file is a pure procedure (shared text) file that is currently open for writing or reading by some process.", 2048, 0);
 		break;
+    case EINVAL:
+        send(target, "Invalid argument", 2048,0);
+        break;
 	}
 }
 void readCommandClient(int socketClient)
@@ -295,48 +298,68 @@ void readCommandClient(int socketClient)
 			printf("\nrecu downl %s %s \n",commande,parametres );
 			if (pid == 0)
 			{
-				int socketUpld = socket(AF_INET, SOCK_STREAM, 0);
-				if (socketUpld == INVALID_SOCKET)
+                printf("pid = 0\n");
+				int socketDownl = socket(AF_INET, SOCK_STREAM, 0);
+				if (socketDownl == INVALID_SOCKET)
 				{
 					perror("socket()");
 					exit(-1);
-				}
+				} else {
+                    printf("sock ok\n");
+                }
 				SOCKADDR_IN sin = {0};
-
 				sin.sin_addr.s_addr = htonl(INADDR_ANY);
-
 				sin.sin_family = AF_INET;
-				int porDownl = 999;
-				sin.sin_port = htons(porDownl);
-
-				while (bind(socketServeur, (SOCKADDR *)&sin, sizeof sin) == SOCKET_ERROR)
+				int portDownl = 999;
+				sin.sin_port = htons(portDownl);
+				while (bind(socketDownl, (SOCKADDR *)&sin, sizeof sin) == SOCKET_ERROR)
 				{
-					porDownl = porDownl + 1;
+                    printf("\n%d\n", errno);
+                    printf("%d\n",portDownl);
+					portDownl = portDownl + 1;
+                    sin.sin_port = htons(portDownl);
 				}
-				send("RDY %d",porDownl,512,0);
-				if (listen(socketServeur, 0) == SOCKET_ERROR)
+                printf("portdownl ok\n");
+                char* commandRdy[512];
+                strcpy(commandRdy, "RDY");
+            
+                strcat(commandRdy, " ");
+                char tab[50];
+                sprintf(tab, "%d", portDownl);
+            
+                strcat(commandRdy, tab);
+				int envoye = send(socketClient,commandRdy,512,0);
+                printf("%d\n",errno);
+                printf("envoye: %d,%s\n", envoye, commandRdy);
+				if (listen(socketDownl, 0) == SOCKET_ERROR)
 				{
 					perror("listen()");
 					exit(-1);
-				}
-				printf("\nLe download commence sur le port %d \n", porDownl);
+				}else {
+                    printf("sock ok\n");
+                }
+				printf("\nLe download commence sur le port %d \n", portDownl);
 				SOCKADDR_IN csin = {0};
 				SOCKET csock;
-
 				int sinsize = sizeof csin;
-
 				int continuer = 1;
-				csock = accept(socketServeur, (SOCKADDR *)&csin, &sinsize);
-
+				csock = accept(socketDownl, (SOCKADDR *)&csin, &sinsize);
+                
 				printf("\nfork & socket OK début du transfert\n");
 
 				//TODO 1 ouvrir le flux de fichier à download en geant les erreurs de type pas de fichier présent
-				FILE *saveFile = fopen(parametres, "r");
-				char *chunk[2048];
-				while (read(chunk, 2048 ,saveFile) > 0)
+                printf("parametres: %s\n",parametres);
+				int saveFile = open(parametres, O_RDONLY, 0666);
+				char *chunk = malloc(2048);
+                //printf("read: %d\n", read(2048, chunk ,saveFile));
+                
+				while (read(saveFile, chunk ,2048) > 0)
 				{
+                    printf("data being send\n");
 					send(csock,chunk,2048,0);
 				}
+                printf("errno: %d\n",errno);
+                perror("read()\n");
 				printf("\nfichier envoyé\n");
 			}
 		}

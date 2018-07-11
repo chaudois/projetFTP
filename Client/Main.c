@@ -265,35 +265,49 @@ void readCommandes()
             }
             else if (strcmp(message, "downl") == 0)
             {
+                printf("in dowln com\n");
                 char *totalCommande[512];
+                printf("blbl\n");
                 strcpy(totalCommande, message);
                 if (parametres != NULL)
                 {
-
+                    printf("parametres non NULL\n");
                     strcat(totalCommande, " ");
                     strcat(totalCommande, parametres);
+                } else {
+                    printf("param NULL\n");
                 }
                 write(sock, totalCommande, 512);
-                char reponsePort[512];
+                char* reponsePort[512];
+                printf("hey\n");
                 read(sock, reponsePort, 512);
+                printf("reponsePort: %s\n", reponsePort);
+                printf("doublehey\n");
 
-                char *commande = strtok(message, " ");
-                char *parametres = strtok(NULL, "");
+                char *commande = strtok(reponsePort, " ");
+                char *parametresNew = strtok(NULL, "");
                 int portNumDownl = 0;
-                if (!strstr(commande, "RDY") || parametres == NULL)
+                printf("commande: %s\n", commande);
+                printf("parameters: %s\n", parametresNew);
+                if (!strstr(commande, "RDY") || parametresNew == NULL)
                 {
                     printf("\nerreur : resultat incoherant\n");
                     exit(-1);
+                }else {
+                    printf("result ok\n");
                 }
-                portNumDownl = atoi(parametres);
+                portNumDownl = atoi(parametresNew);
                 int pid = fork();
                 if (pid == 0)
                 {
+                    printf("pid = 0\n");
                     int sockDownl = socket(AF_INET, SOCK_STREAM, 0);
                     if (sockDownl == INVALID_SOCKET)
                     {
                         perror("socket()");
                         exit(-1);
+                    }else {
+                        printf("sock on\n");
                     }
                     struct hostent *hostinfo = NULL;
                     SOCKADDR_IN sin = {0};
@@ -303,6 +317,8 @@ void readCommandes()
                     {
                         fprintf(stderr, "Unknown host %s.\n", TARGET_IP);
                         exit(EXIT_FAILURE);
+                    }else {
+                        printf("host ok\n");
                     }
 
                     sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr; /* l'adresse se trouve dans le champ h_addr de la structure hostinfo */
@@ -313,15 +329,24 @@ void readCommandes()
                     {
                         perror("connect()");
                         exit(-1);
+                    }else {
+                        printf("connect ok\n");
                     }
 
                     printf("\ndébut du download...\n");
+                    printf("parametres: %s\n",parametres);
                     FILE *saveFileDownl = fopen(parametres, "w+");
-                    char *chunk[2048];
-                    while (read(chunk, 2048, sockDownl) > 0)
-                    {
-                        send(saveFileDownl, chunk, 2048, 0);
+                    char *chunk = malloc(2048);
+                    printf("sockDownl: %d\n", sockDownl);
+                    
+                    while(read(sockDownl, chunk, 2048) > 0){
+                        printf("file being send\n");
+                        printf("chunk: %s\n", chunk);
+                        fputs(chunk, saveFileDownl);
                     }
+                    fclose(saveFileDownl);
+
+                
                     printf("\nfin du download...\n");
                 }
             }
