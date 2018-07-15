@@ -9,7 +9,9 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -222,8 +224,10 @@ void readCommandes()
                 }
                 write(sock, totalCommande, 512);
                 char *retour[2048];
-                read(sock, retour, 2048);
-                printf("\n%s\n", retour);
+                int lu = read(sock, retour, 2048);
+                char *total = malloc(lu + 1);
+                strncpy(total, retour, lu);
+                printf("\n%s\n", total);
             }
             else if (strcmp(message, "rcd") == 0)
             {
@@ -256,99 +260,143 @@ void readCommandes()
                 }
                 write(sock, totalCommande, 512);
                 char *retour[2048];
-                read(sock, retour, 2048);
-                printf("\n%s\n", retour);
+                int lu = read(sock, retour, 2048);
+                char *total = malloc(lu + 1);
+                strncpy(total, retour, lu);
+                printf("\n%s\n", total);
             }
             else if (strcmp(message, "upld") == 0)
             {
-                printf("\ncommande %s\n", message);
-            }
-            else if (strcmp(message, "downl") == 0)
-            {
-                printf("in dowln com\n");
                 char *totalCommande[512];
-                printf("blbl\n");
                 strcpy(totalCommande, message);
                 if (parametres != NULL)
                 {
-                    printf("parametres non NULL\n");
                     strcat(totalCommande, " ");
                     strcat(totalCommande, parametres);
-                } else {
-                    printf("param NULL\n");
+                }
+                else
+                {
+                    printf("veuillez préciser quelle fichier télécharger\n");
+                    exit(0);
+                }
+                send(sock, totalCommande, 512, 0);
+                int socketUpld = socket(AF_INET, SOCK_STREAM, 0);
+                if (socketUpld == INVALID_SOCKET)
+                {
+                    perror("socket()");
+                    exit(-1);
+                }
+                SOCKADDR_IN sin = {0};
+                sin.sin_addr.s_addr = htonl(INADDR_ANY);
+                sin.sin_family = AF_INET;
+                int portDownl = 999;
+                sin.sin_port = htons(portDownl);
+                while (bind(socketUpld, (SOCKADDR *)&sin, sizeof sin) == SOCKET_ERROR)
+                {
+                    portDownl = portDownl + 1;
+                    if (portDownl > 10000)
+                    {
+                        printf("\nAucun port ne permet de bind le socket : \n");
+                        perror("bind()");
+                        exit(0);
+                    }
+                    sin.sin_port = htons(portDownl);
+                }
+                char *commandRdy[512];
+                strcpy(commandRdy, "RDY");
+
+                strcat(commandRdy, " ");
+                char tab[50];
+                sprintf(tab, "%d", portDownl);
+
+                strcat(commandRdy, tab);
+                send(sock, commandRdy, 512, 0);
+                if (listen(socketUpld, 0) == SOCKET_ERROR)
+                {
+                    perror("listen()");
+                    exit(-1);
+                }
+                SOCKADDR_IN csin = {0};
+                SOCKET ssock;
+                int sinsize = sizeof csin;
+                ssock = accept(socketUpld, (SOCKADDR *)&csin, &sinsize);
+
+                int fileToTransert = open(parametres, O_RDONLY, 0666);
+                char *chunk = malloc(2048);
+                int lu = 0;
+
+                do
+                {
+                    lu = read(fileToTransert, chunk, 2048);
+                    send(ssock, chunk, lu, 0);
+                } while (lu > 2047);
+                close(ssock);
+                close(fileToTransert);
+                free(chunk);
+            }
+            else if (strcmp(message, "downl") == 0)
+            {
+                char *totalCommande[512];
+                strcpy(totalCommande, message);
+                if (parametres != NULL)
+                {
+                    strcat(totalCommande, " ");
+                    strcat(totalCommande, parametres);
+                }
+                else
+                {
+                    printf("veuillez préciser quelle fichier télécharger\n");
+                    exit(0);
                 }
                 write(sock, totalCommande, 512);
-                char* reponsePort[512];
-                printf("hey\n");
+                char *reponsePort[512];
                 read(sock, reponsePort, 512);
-                printf("reponsePort: %s\n", reponsePort);
-                printf("doublehey\n");
-
                 char *commande = strtok(reponsePort, " ");
                 char *parametresNew = strtok(NULL, "");
                 int portNumDownl = 0;
-                printf("commande: %s\n", commande);
-                printf("parameters: %s\n", parametresNew);
                 if (!strstr(commande, "RDY") || parametresNew == NULL)
                 {
                     printf("\nerreur : resultat incoherant\n");
-                    exit(-1);
-                }else {
-                    printf("result ok\n");
+                    continue;
                 }
                 portNumDownl = atoi(parametresNew);
-                int pid = fork();
-                if (pid == 0)
+                int sockDownl = socket(AF_INET, SOCK_STREAM, 0);
+                if (sockDownl == INVALID_SOCKET)
                 {
-                    printf("pid = 0\n");
-                    int sockDownl = socket(AF_INET, SOCK_STREAM, 0);
-                    if (sockDownl == INVALID_SOCKET)
-                    {
-                        perror("socket()");
-                        exit(-1);
-                    }else {
-                        printf("sock on\n");
-                    }
-                    struct hostent *hostinfo = NULL;
-                    SOCKADDR_IN sin = {0};
-
-                    hostinfo = gethostbyname(TARGET_IP);
-                    if (hostinfo == NULL)
-                    {
-                        fprintf(stderr, "Unknown host %s.\n", TARGET_IP);
-                        exit(EXIT_FAILURE);
-                    }else {
-                        printf("host ok\n");
-                    }
-
-                    sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr; /* l'adresse se trouve dans le champ h_addr de la structure hostinfo */
-                    sin.sin_port = htons(portNumDownl);          /* on utilise htons pour le port */
-                    sin.sin_family = AF_INET;
-
-                    if (connect(sockDownl, (SOCKADDR *)&sin, sizeof(SOCKADDR)) == SOCKET_ERROR)
-                    {
-                        perror("connect()");
-                        exit(-1);
-                    }else {
-                        printf("connect ok\n");
-                    }
-
-                    printf("\ndébut du download...\n");
-                    printf("parametres: %s\n",parametres);
-                    FILE *saveFileDownl = fopen(parametres, "w+");
-                    char *chunk = malloc(2048);
-                    printf("sockDownl: %d\n", sockDownl);
-                    
-                    while(read(sockDownl, chunk, 2048) > 0){
-                        printf("file being send\n");
-                        printf("chunk: %s\n", chunk);
-                        fputs(chunk, saveFileDownl);
-                    }
-                    fclose(saveFileDownl);
-
-                
-                    printf("\nfin du download...\n");
+                    perror("socket()");
+                    continue;
                 }
+                struct hostent *hostinfo = NULL;
+                SOCKADDR_IN sin = {0};
+
+                hostinfo = gethostbyname(TARGET_IP);
+                if (hostinfo == NULL)
+                {
+                    fprintf(stderr, "Unknown host %s.\n", TARGET_IP);
+                    continue;
+                }
+                sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr; /* l'adresse se trouve dans le champ h_addr de la structure hostinfo */
+                sin.sin_port = htons(portNumDownl);          /* on utilise htons pour le port */
+                sin.sin_family = AF_INET;
+
+                if (connect(sockDownl, (SOCKADDR *)&sin, sizeof(SOCKADDR)) == SOCKET_ERROR)
+                {
+                    perror("connect()");
+                    continue;
+                }
+
+                FILE *saveFileDownl = fopen(parametres, "w+");
+                char *chunk = malloc(2048);
+                int lu = 0;
+                do
+                {
+                    lu = read(sockDownl, chunk, 2048);
+                    fwrite(chunk, 1, lu - 1, saveFileDownl);
+                    printf("\n%d\n", lu);
+                } while (lu > 0);
+                printf("\n\nend\n\n");
+                fclose(saveFileDownl);
+                free(chunk);
             }
             else
             {
@@ -358,6 +406,7 @@ void readCommandes()
         }
 
     } while (!strstr(message, "stop"));
+    free(message);
 }
 void connection()
 {
