@@ -17,7 +17,6 @@
 #define closesocket(s) close(s)
 #define h_addr h_addr_list[0]
 typedef int SOCKET;
-const char *TARGET_IP = "localhost";
 const int TARGET_PORT = 998;
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
@@ -127,7 +126,7 @@ int login()
     }
     return 0;
 }
-void readCommandes()
+void readCommandes(char *ipServeur)
 {
     char *message = malloc(512);
 
@@ -369,14 +368,14 @@ void readCommandes()
                 struct hostent *hostinfo = NULL;
                 SOCKADDR_IN sin = {0};
 
-                hostinfo = gethostbyname(TARGET_IP);
+                hostinfo = gethostbyname(ipServeur);
                 if (hostinfo == NULL)
                 {
-                    fprintf(stderr, "Unknown host %s.\n", TARGET_IP);
+                    fprintf(stderr, "Unknown host %s.\n", ipServeur);
                     continue;
                 }
-                sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr; /* l'adresse se trouve dans le champ h_addr de la structure hostinfo */
-                sin.sin_port = htons(portNumDownl);          /* on utilise htons pour le port */
+                sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr;
+                sin.sin_port = htons(portNumDownl);
                 sin.sin_family = AF_INET;
 
                 if (connect(sockDownl, (SOCKADDR *)&sin, sizeof(SOCKADDR)) == SOCKET_ERROR)
@@ -391,10 +390,8 @@ void readCommandes()
                 do
                 {
                     lu = read(sockDownl, chunk, 2048);
-                    fwrite(chunk, 1, lu - 1, saveFileDownl);
-                    printf("\n%d\n", lu);
+                    fwrite(chunk, 1, lu, saveFileDownl);
                 } while (lu > 0);
-                printf("\n\nend\n\n");
                 fclose(saveFileDownl);
                 free(chunk);
             }
@@ -408,47 +405,53 @@ void readCommandes()
     } while (!strstr(message, "stop"));
     free(message);
 }
-void connection()
+int connection(char *ipserveur)
 {
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET)
     {
         perror("socket()");
-        exit(-1);
+        return 0;
     }
     struct hostent *hostinfo = NULL;
     SOCKADDR_IN sin = {0};
 
-    hostinfo = gethostbyname(TARGET_IP);
+    hostinfo = gethostbyname(ipserveur);
     if (hostinfo == NULL)
     {
-        fprintf(stderr, "Unknown host %s.\n", TARGET_IP);
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Unknown host %s.\n", ipserveur);
+        return 0;
     }
 
-    sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr; /* l'adresse se trouve dans le champ h_addr de la structure hostinfo */
-    sin.sin_port = htons(TARGET_PORT);           /* on utilise htons pour le port */
+    sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr;
+    sin.sin_port = htons(TARGET_PORT);
     sin.sin_family = AF_INET;
 
     if (connect(sock, (SOCKADDR *)&sin, sizeof(SOCKADDR)) == SOCKET_ERROR)
     {
         perror("connect()");
-        exit(-1);
+        return 0;
     }
 
-    printf("connecté  sur l'adresse %s:%d\n", TARGET_IP, TARGET_PORT);
+    printf("connecté  sur l'adresse %s:%d\n", ipserveur, TARGET_PORT);
+    return 1;
 }
 int main()
 {
     system("clear");
     signal(SIGINT, sig_handler);
+    char *ip = malloc(20);
+    do
+    {
+        printf("\nip du serveur?\n");
+        gets(ip);
 
-    connection();
+    } while (!connection(ip));
 
-    if (!login())
+        if (!login())
     {
         printf("\ntrop d'essais infructueux,deconnection\n");
         exit(0);
     }
-    readCommandes();
+    readCommandes(ip);
 }

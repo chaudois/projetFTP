@@ -175,7 +175,7 @@ void diagnoseExecFail(int retourExec, int target)
 		break;
 	}
 }
-void readCommandClient(int socketClient)
+void readCommandClient(int socketClient,char* ipclient)
 {
 
 	int tailleRecue = 0;
@@ -372,14 +372,14 @@ void readCommandClient(int socketClient)
 			struct hostent *hostinfo = NULL;
 			SOCKADDR_IN sin = {0};
 
-			hostinfo = gethostbyname("127.0.0.1");
+			hostinfo = gethostbyname(ipclient);
 			if (hostinfo == NULL)
 			{
-				fprintf(stderr, "Unknown host %s.\n", "127.0.0.1");
+				fprintf(stderr, "Unknown host %s.\n", ipclient);
 				continue;
 			}
-			sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr; 
-			sin.sin_port = htons(portNumDownl);			 
+			sin.sin_addr = *(IN_ADDR *)hostinfo->h_addr;
+			sin.sin_port = htons(portNumDownl);
 			sin.sin_family = AF_INET;
 
 			if (connect(sockDownl, (SOCKADDR *)&sin, sizeof(SOCKADDR)) == SOCKET_ERROR)
@@ -450,10 +450,15 @@ void startServeur()
 		if (pid == 0)
 		{
 			printf("connexion d'un client avec l'id %d \n", csock);
+ 			getpeername(csock, (struct sockaddr *)&csin, 20);
+			char *clientip = malloc(20);
+			strcpy(clientip, inet_ntoa(csin.sin_addr));
+
+			printf("\nip : %s\n", clientip);
 			if (loginClient(csock))
 			{
 
-				readCommandClient(csock);
+				readCommandClient(csock,clientip);
 			}
 			else
 			{
